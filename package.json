@@ -5,10 +5,46 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:win": "electron-builder --win"
   },
   "author": "",
   "license": "MIT",
+  "build": {
+    "appId": "com.desktoppet.app",
+    "productName": "桌面宠物",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "preload-settings.js",
+      "index.html",
+      "settings.html",
+      "settings.js",
+      "styles.css",
+      "src/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "桌面宠物"
+    }
+  },
   "devDependencies": {
     "electron": "^25.9.8",
     "electron-builder": "^24.0.0"

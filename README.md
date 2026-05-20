@@ -2,8 +2,6 @@
 
 A desktop pet that lives on your screen — walks along edges, naps, meows, and keeps you company while you work. Built with Electron and Canvas2D.
 
-https://github.com/user-attachments/assets/4a8b9c3d-2e1f-4a5c-b6d7-8e9f0a1b2c3d
-
 ## Features
 
 - **Always on top** — sits above all windows, frameless and transparent background
