@@ -1,0 +1,16 @@
+{
+  "name": "desktop-pet",
+  "version": "3.0.0",
+  "description": "Desktop Pet",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^25.9.8",
+    "electron-builder": "^24.0.0"
+  }
+}
