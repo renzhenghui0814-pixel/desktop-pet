@@ -31,14 +31,16 @@ $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
 $env:ELECTRON_BUILDER_BINARIES_MIRROR = "https://npmmirror.com/mirrors/electron-builder-binaries/"
 Write-Host "[BUILD] Mirror: npmmirror.com" -ForegroundColor Gray
 
-# Determine electron-builder command
+# Determine electron-builder command and arguments
 $builderCmd = Join-Path $scriptDir "node_modules\.bin\electron-builder.cmd"
 $npxCmd = Join-Path $nodePath "npx.cmd"
 
 if (Test-Path $builderCmd) {
   $builderPath = $builderCmd
+  $builderArgs = "$target --x64"
 } else {
   $builderPath = $npxCmd
+  $builderArgs = "electron-builder $target --x64"
 }
 
 if ($Quick) {
@@ -54,7 +56,7 @@ Write-Host ""
 
 # Run build (show output in real-time)
 $proc = Start-Process -FilePath $builderPath `
-  -ArgumentList "electron-builder $target --x64" `
+  -ArgumentList $builderArgs `
   -WorkingDirectory $scriptDir `
   -NoNewWindow `
   -Wait `
@@ -79,4 +81,5 @@ foreach ($f in $distFiles) {
 
 Write-Host ""
 Write-Host "  Output: $scriptDir\dist\" -ForegroundColor Gray
+
 
