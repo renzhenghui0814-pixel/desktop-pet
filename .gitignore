@@ -8,3 +8,6 @@ stdout.txt
 stderr.txt
 .DS_Store
 Thumbs.db
+
+# 用户运行时导入的皮肤（解压目录，不入库）
+skins/imported/

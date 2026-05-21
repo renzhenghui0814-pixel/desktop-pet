@@ -1,13 +1,14 @@
 /**
  * 桌面宠物 — 主应用
  */
-import { CAT_W, CAT_H, CAT_VISUAL_H, CAT_VISUAL_W, DEFAULT_PHRASES, STATE_DURATION, setTheme, setCatScale, setPetStyle, getCatSize, catScale, petStyle } from './constants.js';
+import { CAT_W, CAT_H, CAT_VISUAL_H, CAT_VISUAL_W, DEFAULT_PHRASES, STATE_DURATION, setTheme, setCatScale, setPetStyle, getCatSize, catScale, petStyle, petType } from './constants.js';
 import { currentTheme } from './constants.js';
+import { AnimationState } from './skins/AnimationState.js';
 import { AnimationLoop } from './engine/AnimationLoop.js';
 import { StateMachine, STATES } from './engine/StateMachine.js';
-import { DEFAULT_SKELETON, POSES, lerpSkeleton } from './engine/Skeleton.js';
 import { Easing } from './engine/Easing.js';
 import { CatRenderer } from './cat/CatRenderer.js';
+import { skinManager } from './skins/SkinManager.js';
 import { PatrolBehavior } from './behaviors/PatrolBehavior.js';
 import { MouseTracker } from './interaction/MouseTracker.js';
 import { SpeechBubble } from './interaction/SpeechBubble.js';
@@ -24,11 +25,10 @@ class DesktopPetApp {
     this.mouse = new MouseTracker(this.renderer);
     this.sm = new StateMachine(STATES.IDLE);
 
-    // 骨骼
-    this.skel = { ...DEFAULT_SKELETON };
-    this._poseFrom = { ...DEFAULT_SKELETON };
-    this._poseTime = 0;
-    this._poseDur = 400;
+    // 动画状态（替代骨架）
+    this._animState = new AnimationState();
+    this._currentFPS = 60;
+    this._lastFPS = 60;
 
     // 动画状态
     this._walk = 0; this._tail = 0;
@@ -40,6 +40,7 @@ class DesktopPetApp {
 
     // 跳跃
     this._jump = false; this._jumpVy = 0; this._jumpBase = 0;
+    this._hoverBubbleCd = 0;
 
     // 拖动
     this._drag = false;
@@ -49,6 +50,13 @@ class DesktopPetApp {
 
     // 宠语（按形象存储）
     this._phrases = this._loadPhrases();
+
+    // 加载已导入的皮肤（注册渲染器 + 补默认宠语，需在 _phrases 之后、首帧渲染之前）
+    this._loadImportedSkins();
+
+    // 内置形象的独立主题记忆 + 应用当前形象的主题（启动沿用上次）
+    this._styleThemes = this._loadStyleThemes();
+    this._applyStyleTheme(petStyle);
 
     // 提醒
     this._reminders = [];
@@ -90,12 +98,41 @@ class DesktopPetApp {
     this.mouse.onClick(() => this._onClick());
     this.mouse.onRightClick(() => this._openSettings());
     this.mouse.onDragStart(() => { if (!this._panelOpen && this.sm.state === STATES.WALKING) this._startIdle(); });
-    this.mouse.onDragEnd(() => { if (!this._panelOpen) { this.patrol.startFreeMove(this.patrol.x, this.patrol.y); this._startWalk(); } });
+    this.mouse.onDragEnd(() => { if (!this._panelOpen) { this.patrol.startFreeMove(this.patrol.x, this.patrol.y); this._startWalk(); this._loop.setTargetFPS(60); } });
     // 监听设置窗口的动作
     if (window.electronAPI?.onSettingsAct) {
       window.electronAPI.onSettingsAct((act) => {
-        if (act.type === 'set-theme') setTheme(act.theme);
-        else if (act.type === 'set-style') { console.log('[app] 收到切换形象:', act.style); setPetStyle(act.style); }
+        if (act.type === 'set-theme') {
+          // 仅改当前（内置）形象的主题记忆，不影响其他形象
+          this._styleThemes[petStyle] = act.theme;
+          this._saveStyleThemes();
+          setTheme(act.theme);
+          this._loop.requestFrame(); // 强制重绘（渲染可能因面板打开而暂停）
+        }
+        else if (act.type === 'set-style') {
+          console.log('[app] 收到切换形象:', act.style);
+          setPetStyle(act.style);
+          this._applyStyleTheme(act.style); // 应用该形象记忆的主题（内置形象）
+          this._loop.requestFrame();
+        }
+        else if (act.type === 'register-skin') {
+          // 导入皮肤：注册渲染器到 skinManager 并立即切换
+          try {
+            skinManager.registerSkin(act.manifest, act.code);
+            this._applySkinPhrases(act.manifest); // 首次导入填入默认宠语
+            setPetStyle(act.manifest.style);
+            this._loop.requestFrame();
+            console.log('[app] 已注册导入皮肤:', act.manifest.id);
+          } catch (e) {
+            console.error('[app] 注册导入皮肤失败:', e);
+            window.electronAPI?.logError('注册导入皮肤失败: ' + (e && e.message));
+          }
+        }
+        else if (act.type === 'set-skin-theme') {
+          // 切换导入皮肤的主题（act.id = 皮肤 id，如 cat.claude）
+          skinManager.setActiveTheme(act.id, act.themeId);
+          this._loop.requestFrame();
+        }
         else if (act.type === 'update-phrases') { this._phrases = act.phrases; this._savePhrases(); }
         else if (act.type === 'update-reminders') { this._reminders = act.reminders; this._saveReminders(); }
         else if (act.type === 'set-scale') {
@@ -103,12 +140,14 @@ class DesktopPetApp {
           const sz = getCatSize();
           this.renderer.setSize(sz.w, sz.h);
           this._moveWin();
+          this._loop.requestFrame(); // 强制重绘（否则画布空白→宠物"消失"）
         }
         else if (act.type === 'close' || act.type === 'settings-closed') {
-          if (!this._panelOpen) return; // 防止重复触发
+          if (!this._panelOpen) return;
           this._panelOpen = false;
           this.patrol.syncPerimeter();
           this._startWalk();
+          this._loop.setTargetFPS(60); // 唤醒渲染循环（之前因面板打开而暂停）
         }
       });
     }
@@ -125,7 +164,7 @@ class DesktopPetApp {
     if (this._panelOpen) return;
     if (this.mouse.isDragging) { this._dragUpdate(); return; }
     if (this.mouse.isOnCat) {
-      if (st !== STATES.STANDING && st !== STATES.SLEEPING) { this.sm.transition(STATES.STANDING); this._stTimer = 0; this._stDur = 400; }
+      if (st !== STATES.STANDING && st !== STATES.SLEEPING) { this.sm.transition(STATES.STANDING); this._stTimer = 0; this._stDur = 400; this._loop.requestFrame(); }
       this._look = this.mouse.lookDirection;
       return;
     }
@@ -174,7 +213,8 @@ class DesktopPetApp {
 
   _bubbleTick() {
     this.bubble.tick();
-    if (this.mouse.hoverDuration > 6 && !this.bubble.visible && this.mouse.isOnCat) this.bubble.show(this._pickPhrase(), 'hover');
+    // 每次鼠标进入宠物都弹气泡（离开即隐藏，再进入再弹，无冷却）
+    if (this.mouse.isOnCat && this.mouse.hoverDuration > 0 && !this.bubble.visible) { this.bubble.show(this._pickPhrase(), 'hover'); }
     if (!this.mouse.isOnCat && this.bubble.visible && this.bubble.mode === 'hover') this.bubble.hide();
   }
 
@@ -204,41 +244,54 @@ class DesktopPetApp {
   _startGroom() { this._prevSt = this.sm.state; this.sm.transition(STATES.GROOMING); this._stDur = randInt(...STATE_DURATION.grooming); this._stTimer = 0; }
 
   // ═══ 渲染 ═══
-  _getSkel() {
-    const st = this.sm.state; let pose;
-    switch (st) {
-      case STATES.WALKING: pose = POSES.walking(this._walk); break;
-      case STATES.SITTING: pose = POSES.sitting; break;
-      case STATES.SLEEPING: pose = POSES.sleeping; break;
-      case STATES.STRETCHING: pose = POSES.stretching(this._stTimer * 0.05); break;
-      case STATES.GROOMING: pose = POSES.grooming(this._stTimer * 0.05); break;
-      case STATES.MEOWING: pose = POSES.meowing(this._stTimer * 0.05); break;
-      case STATES.LOOKING: pose = POSES.looking(this._look.x, this._look.y); break;
-      case STATES.STANDING: pose = POSES.standing(this._look.x, this._look.y); break;
-      default: pose = POSES.idle(this._tail);
-    }
-    const sk = { ...DEFAULT_SKELETON };
-    for (const [k, v] of Object.entries(pose)) { if (typeof v === 'number') sk[k] = v; }
-    return sk;
-  }
-
   _draw() {
-    const target = this._getSkel();
-    let final = target;
     const st = this.sm.state;
-    if (st !== this._prevSt) { this._poseFrom = { ...this.skel }; this._poseTime = 0; this._prevSt = st; }
-    if (this._poseTime < this._poseDur) { this._poseTime += 16.67; final = lerpSkeleton(this._poseFrom, target, Easing.easeOutCubic(Math.min(1, this._poseTime / this._poseDur))); }
-    this.skel = final;
-    let mo = 0;
-    if (st === STATES.MEOWING) mo = Math.sin(this._stTimer * 0.15) * 0.5 + 0.5;
-    this.renderer.render(final, st, this._blink, this._tail, mo, this._look, this._faceR);
-    this._moveWin();
+
+    // 同步 AnimationState
+    this._animState.syncFromApp(this);
+
+    // 帧率策略
+    let targetFPS;
+    if (this._panelOpen || this.mouse.isDragging || this._reminderActive) {
+      targetFPS = 0; // 暂停
+    } else if (this._jump || st === 'walking' || st === 'meowing' || st === 'stretching') {
+      targetFPS = 60;
+    } else if (st === 'standing' || st === 'looking' || st === 'grooming') {
+      targetFPS = 15;
+    } else {
+      targetFPS = 4; // idle / sitting / sleeping
+    }
+
+    if (targetFPS !== this._lastFPS) {
+      this._loop.setTargetFPS(targetFPS);
+      this._lastFPS = targetFPS;
+    }
+
+    // 是否可缓存静止帧
+    const canCache = (st === 'sleeping');
+
+    // 渲染
+    this.renderer.render(this._animState, canCache);
+
+    // IPC 节流：仅位置变化 > 2px 时移动窗口
+    if (st === 'walking' || this._jump || this.mouse.isDragging) {
+      this._moveWin();
+    }
   }
 
   _moveWin() {
     const sz = getCatSize();
-    const xo = (sz.w - sz.vw) / 2, yo = Math.round(60 * sz.h / CAT_H);
-    window.electronAPI?.moveWindow(this.patrol.x - xo, this.patrol.y - yo, sz.w, sz.h);
+    const xo = (sz.w - sz.vw) / 2;
+    const yo = Math.round(60 * sz.h / CAT_H);
+    const nx = Math.round(this.patrol.x - xo);
+    const ny = Math.round(this.patrol.y - yo);
+
+    // 仅位置变化 > 2px 时调用 IPC
+    if (this._lastWinX == null || Math.abs(nx - this._lastWinX) > 2 || Math.abs(ny - this._lastWinY) > 2) {
+      this._lastWinX = nx;
+      this._lastWinY = ny;
+      window.electronAPI?.moveWindow(nx, ny, sz.w, sz.h);
+    }
   }
 
   // ═══ 设置面板 ═══
@@ -251,6 +304,50 @@ class DesktopPetApp {
       phrases: JSON.parse(JSON.stringify(this._phrases)),
       reminders: [...this._reminders],
     });
+  }
+
+  // ═══ 导入皮肤 ═══
+  _loadImportedSkins() {
+    try {
+      const arr = JSON.parse(localStorage.getItem('pet-imported-skins') || '[]');
+      for (const x of arr) {
+        const m = x.manifest || x;
+        const code = x.code;
+        if (m && code && m.id) {
+          try { skinManager.registerSkin(m, code); this._applySkinPhrases(m); }
+          catch (e) { console.error('[app] 加载导入皮肤失败:', m.id, e); }
+        }
+      }
+    } catch (e) { console.error('[app] 读取导入皮肤列表失败:', e); }
+  }
+
+  // ═══ 内置形象的独立主题记忆 ═══
+  _loadStyleThemes() {
+    try { return JSON.parse(localStorage.getItem('pet-style-themes') || '{}'); } catch (e) { return {}; }
+  }
+  _saveStyleThemes() {
+    try { localStorage.setItem('pet-style-themes', JSON.stringify(this._styleThemes)); } catch (e) {}
+  }
+  /** 该形象是否为带自身主题的导入皮肤 */
+  _isImportedStyle(style) {
+    return skinManager.getThemes(`${petType}.${style}`).length > 0;
+  }
+  /** 应用某形象的主题：内置形象 setTheme 到其记忆主题；导入形象不动全局色（由皮肤主题渲染） */
+  _applyStyleTheme(style) {
+    if (!this._isImportedStyle(style)) {
+      setTheme(this._styleThemes[style] || 'orange');
+    }
+  }
+
+  /** 把皮肤自带的默认宠语写入对应形象（仅在该形象还没有宠语时，避免覆盖用户编辑） */
+  _applySkinPhrases(manifest) {
+    if (!manifest) return;
+    const style = manifest.style;
+    if (Array.isArray(manifest.phrases) && manifest.phrases.length
+        && (!this._phrases[style] || this._phrases[style].length === 0)) {
+      this._phrases[style] = manifest.phrases.slice();
+      this._savePhrases();
+    }
   }
 
   // ═══ 宠语存储（按形象） ═══
@@ -288,6 +385,7 @@ class DesktopPetApp {
           document.getElementById('reminderOverlay').classList.add('hidden');
           this._reminderActive = false;
           this._startWalk();
+          this._loop.setTargetFPS(60); // 唤醒渲染循环
         }, 5000);
         break;
       }

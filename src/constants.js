@@ -1,8 +1,5 @@
-// 宠物类型（内部使用，不暴露给设置面板）
-export let petType = 'cat';
-export function setPetType(v) { petType = v; }
-
-// 宠物形象风格
+// 宠物类型 + 形象（由 SkinManager 管理，此处保留供 CatRenderer 读取）
+export const petType = 'cat';
 export let petStyle = 'realistic';
 try { const s = localStorage.getItem('pet-style'); if (s) petStyle = s; } catch(e) {}
 export function setPetStyle(v) { petStyle = v; try { localStorage.setItem('pet-style', v); } catch(e) {} }
@@ -170,7 +167,7 @@ export const THEMES = {
   },
 };
 
-// 当前主题
+// 当前主题（仅反映最后一次 setTheme 的全局色板；每个内置形象的主题记忆由 app.js 管理）
 export let currentTheme = 'orange';
 export const setTheme = (t) => {
   currentTheme = t;

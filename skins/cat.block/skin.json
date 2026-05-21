@@ -1,0 +1,12 @@
+{
+  "id": "cat.block",
+  "name": "积木猫",
+  "version": "1.0.0",
+  "type": "cat",
+  "style": "block",
+  "author": "desktop-pet",
+  "description": "纯乐高积木拼接猫——多色砖块堆叠，螺柱顶面，定格动画感",
+  "icon": "🧱",
+  "entry": "renderer.js",
+  "theme": "block"
+}

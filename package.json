@@ -1,6 +1,6 @@
 {
   "name": "desktop-pet",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Desktop Pet",
   "main": "main.js",
   "scripts": {
@@ -13,6 +13,7 @@
   "build": {
     "appId": "com.desktoppet.app",
     "productName": "桌面宠物",
+    "icon": "assets/icon.ico",
     "directories": {
       "output": "dist"
     },
@@ -24,17 +25,24 @@
       "settings.html",
       "settings.js",
       "styles.css",
-      "src/**/*"
+      "src/**/*",
+      "skins/**/*",
+      "!skins/imported/**"
     ],
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -46,7 +54,10 @@
     }
   },
   "devDependencies": {
+    "canvas": "^3.2.3",
     "electron": "^25.9.8",
-    "electron-builder": "^24.0.0"
+    "electron-builder": "^24.0.0",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5"
   }
 }

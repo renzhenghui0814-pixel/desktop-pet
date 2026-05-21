@@ -1,0 +1,12 @@
+{
+  "id": "cat.robot",
+  "name": "哆啦猫梦",
+  "version": "1.0.0",
+  "type": "cat",
+  "style": "robot",
+  "author": "desktop-pet",
+  "description": "哆啦A梦风格的蓝色机器猫——圆球身体、百宝袋、铃铛项圈、竹蜻蜓",
+  "icon": "🤖",
+  "entry": "renderer.js",
+  "theme": "robot"
+}

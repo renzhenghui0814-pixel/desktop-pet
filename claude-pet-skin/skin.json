@@ -1,0 +1,54 @@
+{
+  "id": "cat.claude",
+  "name": "克劳德",
+  "type": "cat",
+  "style": "claude",
+  "entry": "renderer.js",
+  "icon": "✳️",
+  "version": "1.1.0",
+  "author": "Claude Code",
+  "themes": [
+    {
+      "id": "coral",
+      "name": "珊瑚橙",
+      "colors": {
+        "main": "#D97757", "dark": "#BE5D3A", "light": "#EBA483",
+        "face": "#F7ECE4", "outline": "#9E4A2C", "term": "#2D2A26",
+        "star": "#D97757", "starLight": "#F2B58F",
+        "eyeWhite": "#FFFFFF", "pupil": "#2D2A26", "white": "#FFFFFF"
+      }
+    },
+    {
+      "id": "midnight",
+      "name": "午夜蓝",
+      "colors": {
+        "main": "#5B7FB9", "dark": "#3E5A8A", "light": "#8AA8D8",
+        "face": "#EAEEF6", "outline": "#2C3E5E", "term": "#1E2530",
+        "star": "#7B9FD9", "starLight": "#AFC6EC",
+        "eyeWhite": "#FFFFFF", "pupil": "#1E2530", "white": "#FFFFFF"
+      }
+    },
+    {
+      "id": "forest",
+      "name": "森林绿",
+      "colors": {
+        "main": "#5B9279", "dark": "#3E6B55", "light": "#8ABFA5",
+        "face": "#EAF2EC", "outline": "#2C4A3A", "term": "#1E2A24",
+        "star": "#6FA98C", "starLight": "#A6D4BC",
+        "eyeWhite": "#FFFFFF", "pupil": "#1E2A24", "white": "#FFFFFF"
+      }
+    }
+  ],
+  "phrases": [
+    "需要我帮你看看这段代码吗?",
+    "让我想想这个问题...",
+    "这个 bug 我们一起抓!",
+    "记得 git commit 哦~",
+    "要不要补个测试?",
+    "你今天效率很高呢!",
+    "喝口水,歇一会儿吧",
+    "这段逻辑很优雅!",
+    "我在这儿,随时帮你",
+    "代码即诗 ✨"
+  ]
+}

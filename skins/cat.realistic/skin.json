@@ -1,0 +1,12 @@
+{
+  "id": "cat.realistic",
+  "name": "写实橘猫",
+  "version": "1.0.0",
+  "type": "cat",
+  "style": "realistic",
+  "author": "desktop-pet",
+  "description": "写实风格的橘色虎斑猫，流线型身体，杏仁眼竖瞳，长尾带环纹",
+  "icon": "🐱",
+  "entry": "renderer.js",
+  "theme": "orange"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "cat.demon",
+  "name": "暗影恶兽",
+  "version": "1.0.0",
+  "type": "cat",
+  "style": "demon",
+  "author": "desktop-pet",
+  "description": "四足伏地的暗影掠食者——多眼、利爪、骨刺、熔岩裂痕",
+  "icon": "👹",
+  "entry": "renderer.js",
+  "theme": "demon"
+}
